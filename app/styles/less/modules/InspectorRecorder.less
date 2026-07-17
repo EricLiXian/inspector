@@ -1,0 +1,209 @@
+inspector-recorder {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    width: 100%;
+    overflow: auto;
+    -webkit-transform: translateZ(0);
+    word-break: break-all;
+
+    .recorder-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 12px;
+        border-bottom: 1px solid @border-gray-lighter;
+        background: @bg-white;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    .recorder-count {
+        font-weight: bold;
+    }
+
+    .recorder-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .recorder-record-btn {
+        cursor: pointer;
+        padding: 2px 8px;
+        border: 1px solid @border-gray-lighter;
+        background: @bg-white;
+        color: @text-color;
+        font-size: @font-size-small;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+
+        &:hover {
+            background: @bg-gray-lightest;
+        }
+
+        .recorder-record-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: @red-saturated;
+        }
+
+        &.is-recording {
+            border-color: @red-saturated;
+            color: @red-saturated;
+
+            .recorder-record-dot {
+                animation: recorder-pulse 1s infinite;
+            }
+        }
+    }
+
+    @keyframes recorder-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+    }
+
+    .recorder-clear-btn {
+        cursor: pointer;
+        padding: 2px 8px;
+        border: 1px solid @border-gray-lighter;
+        background: @bg-white;
+        color: @text-color;
+        font-size: @font-size-small;
+
+        &:hover {
+            background: @bg-gray-lightest;
+        }
+    }
+
+    .recorder-empty {
+        padding: @padding-base-horizontal;
+        text-align: center;
+    }
+
+    .recorder-entries {
+        flex-grow: 1;
+    }
+
+    .recorder-entry {
+        border-bottom: 1px solid @border-gray-lighter;
+    }
+
+    .recorder-entry-header {
+        display: flex;
+        align-items: center;
+        padding: 4px 4px 4px 4px;
+        cursor: pointer;
+
+        &:hover {
+            background: @bg-gray-lightest;
+        }
+
+        arrow {
+            display: inline-block;
+            vertical-align: top;
+            flex-shrink: 0;
+        }
+
+        section-title {
+            flex-grow: 1;
+        }
+    }
+
+    .recorder-entry-timestamp {
+        color: @gray;
+        font-size: @font-size-small;
+        margin-left: 8px;
+        flex-shrink: 0;
+    }
+
+    .recorder-entry-action {
+        display: inline-block;
+        padding: 1px 6px;
+        margin-right: 6px;
+        border-radius: 3px;
+        font-size: @font-size-small;
+        font-weight: bold;
+        flex-shrink: 0;
+
+        &.is-click {
+            background: @bg-gray-lightest;
+            color: @text-color;
+            border: 1px solid @border-gray-lighter;
+        }
+
+        &.is-type {
+            background: @red-saturated;
+            color: @bg-white;
+        }
+    }
+
+    .recorder-entry-typed-value {
+        color: @red-saturated;
+        font-family: monospace;
+        font-size: @font-size-small;
+        margin-left: 6px;
+        flex-shrink: 0;
+        max-width: 40%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .recorder-entry-body {
+        padding-left: 12px;
+    }
+
+    .recorder-section {
+        padding: 0 0 2px 4px;
+
+        arrow {
+            display: inline-block;
+            vertical-align: top;
+        }
+
+        arrow ~ section-title {
+            cursor: default;
+        }
+
+        & ul no-data {
+            font-style: normal;
+            padding: 0;
+            text-align: left;
+        }
+
+        & > ul {
+            border-bottom: none;
+            padding: 2px 2px 4px 4px;
+        }
+
+        key {
+            white-space: nowrap;
+        }
+
+        li {
+            & > ul {
+                display: none;
+                padding-left: 19px;
+                padding-top: 2px;
+
+                & section-title {
+                    color: @red-saturated;
+                }
+            }
+
+            & > ul[expanded] {
+                display: flex;
+                flex-direction: column;
+            }
+        }
+
+        section-title {
+            display: inline-block;
+        }
+    }
+}

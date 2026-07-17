@@ -1965,6 +1965,184 @@ elements-registry-master-view:not([show-filtered-elements]) .selected ::selectio
     content: '...';
   }
 }
+inspector-recorder {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  width: 100%;
+  overflow: auto;
+  -webkit-transform: translateZ(0);
+  word-break: break-all;
+}
+inspector-recorder .recorder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  border-bottom: 1px solid #d4d4d4;
+  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+inspector-recorder .recorder-count {
+  font-weight: bold;
+}
+inspector-recorder .recorder-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+inspector-recorder .recorder-record-btn {
+  cursor: pointer;
+  padding: 2px 8px;
+  border: 1px solid #d4d4d4;
+  background: #fff;
+  color: #222;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+inspector-recorder .recorder-record-btn:hover {
+  background: #eee;
+}
+inspector-recorder .recorder-record-btn .recorder-record-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #C80000;
+}
+inspector-recorder .recorder-record-btn.is-recording {
+  border-color: #C80000;
+  color: #C80000;
+}
+inspector-recorder .recorder-record-btn.is-recording .recorder-record-dot {
+  animation: recorder-pulse 1s infinite;
+}
+@keyframes recorder-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+inspector-recorder .recorder-clear-btn {
+  cursor: pointer;
+  padding: 2px 8px;
+  border: 1px solid #d4d4d4;
+  background: #fff;
+  color: #222;
+  font-size: 11px;
+}
+inspector-recorder .recorder-clear-btn:hover {
+  background: #eee;
+}
+inspector-recorder .recorder-empty {
+  padding: 12px;
+  text-align: center;
+}
+inspector-recorder .recorder-entries {
+  flex-grow: 1;
+}
+inspector-recorder .recorder-entry {
+  border-bottom: 1px solid #d4d4d4;
+}
+inspector-recorder .recorder-entry-header {
+  display: flex;
+  align-items: center;
+  padding: 4px 4px 4px 4px;
+  cursor: pointer;
+}
+inspector-recorder .recorder-entry-header:hover {
+  background: #eee;
+}
+inspector-recorder .recorder-entry-header arrow {
+  display: inline-block;
+  vertical-align: top;
+  flex-shrink: 0;
+}
+inspector-recorder .recorder-entry-header section-title {
+  flex-grow: 1;
+}
+inspector-recorder .recorder-entry-timestamp {
+  color: #bbb;
+  font-size: 11px;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+inspector-recorder .recorder-entry-action {
+  display: inline-block;
+  padding: 1px 6px;
+  margin-right: 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+inspector-recorder .recorder-entry-action.is-click {
+  background: #eee;
+  color: #222;
+  border: 1px solid #d4d4d4;
+}
+inspector-recorder .recorder-entry-action.is-type {
+  background: #C80000;
+  color: #fff;
+}
+inspector-recorder .recorder-entry-typed-value {
+  color: #C80000;
+  font-family: monospace;
+  font-size: 11px;
+  margin-left: 6px;
+  flex-shrink: 0;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+inspector-recorder .recorder-entry-body {
+  padding-left: 12px;
+}
+inspector-recorder .recorder-section {
+  padding: 0 0 2px 4px;
+}
+inspector-recorder .recorder-section arrow {
+  display: inline-block;
+  vertical-align: top;
+}
+inspector-recorder .recorder-section arrow ~ section-title {
+  cursor: default;
+}
+inspector-recorder .recorder-section ul no-data {
+  font-style: normal;
+  padding: 0;
+  text-align: left;
+}
+inspector-recorder .recorder-section > ul {
+  border-bottom: none;
+  padding: 2px 2px 4px 4px;
+}
+inspector-recorder .recorder-section key {
+  white-space: nowrap;
+}
+inspector-recorder .recorder-section li > ul {
+  display: none;
+  padding-left: 19px;
+  padding-top: 2px;
+}
+inspector-recorder .recorder-section li > ul section-title {
+  color: #C80000;
+}
+inspector-recorder .recorder-section li > ul[expanded] {
+  display: flex;
+  flex-direction: column;
+}
+inspector-recorder .recorder-section section-title {
+  display: inline-block;
+}
 .ai-message.message-assistant .message-content {
   color: #222 !important;
 }

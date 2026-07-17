@@ -11,6 +11,10 @@ sap.ui.require(['ToolsAPI'], function (ToolsAPI) {
 	var ui5Temp = window[ui5TempName] = {}; // Container for all temp. variables
 	var tempVarCount = 0;
 
+    // Recording state — controlled from the devtools panel. When true, left-clicks
+    // on UI5 controls in the page are captured into the Inspector Recorder.
+    var _isRecording = false;
+
     const log = (m, options) => console.log(`ui5-inspector: ${m}`, options ? options : false);
 
     // Create global reference for the extension.
@@ -84,6 +88,120 @@ sap.ui.require(['ToolsAPI'], function (ToolsAPI) {
         } catch (error) {
             console.warn(error);
         }
+    }
+
+    /**
+     * Build the same formatted control data that 'do-control-select' sends, so the
+     * recorder can create an entry without triggering a separate control selection.
+     * @param {string} controlId
+     * @returns {Object}
+     */
+    function _getRecorderControlData(controlId) {
+        var controlProperties = ToolsAPI.getControlProperties(controlId);
+        var controlBindings = ToolsAPI.getControlBindings(controlId);
+        return {
+            controlProperties: controlUtils.getControlPropertiesFormattedForDataView(controlId, controlProperties),
+            controlBindings: controlUtils.getControlBindingsFormattedForDataView(controlBindings)
+        };
+    }
+
+    /**
+     * Walk up the DOM from the given element to the closest UI5 control id.
+     * @param {Element} element
+     * @returns {string|null}
+     */
+    function _findClosestUI5ControlId(element) {
+        var node = element;
+        while (node && node !== document.body) {
+            if (node.getAttribute && node.getAttribute('data-sap-ui')) {
+                return node.id || null;
+            }
+            node = node.parentNode;
+        }
+        return null;
+    }
+
+    /**
+     * Track the most recently focused editable native element and its value at focus
+     * time, so that on commit (change or blur) we can decide whether the user typed
+     * something and emit a recorder entry.
+     */
+    var _focusedEditable = null;
+    var _focusedEditableInitialValue = null;
+    var _focusedEditableControlId = null;
+
+    /**
+     * @param {Element} element
+     * @returns {boolean}
+     */
+    function _isEditableTextElement(element) {
+        if (!element || !element.tagName) {
+            return false;
+        }
+        var tag = element.tagName;
+        if (tag === 'TEXTAREA') {
+            return true;
+        }
+        if (tag === 'INPUT') {
+            var type = (element.getAttribute('type') || 'text').toLowerCase();
+            // Skip checkboxes, radios, buttons, file pickers, etc.
+            return type !== 'checkbox' && type !== 'radio' && type !== 'button' &&
+                type !== 'submit' && type !== 'reset' && type !== 'file' &&
+                type !== 'image' && type !== 'hidden';
+        }
+        if (element.isContentEditable) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @param {Element} element
+     * @returns {string}
+     */
+    function _readEditableValue(element) {
+        if (!element) {
+            return '';
+        }
+        if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+            return element.value === null ? '' : String(element.value);
+        }
+        if (element.isContentEditable) {
+            return element.textContent === null ? '' : String(element.textContent);
+        }
+        return '';
+    }
+
+    /**
+     * Emit a recorder text-capture message for the currently focused field if its
+     * value changed since focus. After committing, re-arm tracking with the new
+     * value as the baseline so subsequent edits before blur are also captured.
+     */
+    function _commitFocusedEditable() {
+        if (!_focusedEditable || !_focusedEditableControlId) {
+            _focusedEditable = null;
+            _focusedEditableInitialValue = null;
+            _focusedEditableControlId = null;
+            return;
+        }
+        var currentValue = _readEditableValue(_focusedEditable);
+        if (currentValue !== _focusedEditableInitialValue) {
+            message.send(Object.assign({
+                action: 'on-recorder-text-capture',
+                target: _focusedEditableControlId,
+                value: currentValue
+            }, _getRecorderControlData(_focusedEditableControlId)));
+            _focusedEditableInitialValue = currentValue;
+        }
+    }
+
+    /**
+     * Stop tracking the currently focused editable.
+     */
+    function _clearFocusedEditable() {
+        _focusedEditable = null;
+        _focusedEditableInitialValue = null;
+        _focusedEditableControlId = null;
     }
 
     // Name space for message handler functions.
@@ -305,6 +423,14 @@ sap.ui.require(['ToolsAPI'], function (ToolsAPI) {
         },
 
         /**
+         * Toggle click-to-record mode from the devtools panel.
+         * @param {Object} event
+         */
+        'do-set-recording-state': function (event) {
+            _isRecording = !!event.detail.isRecording;
+        },
+
+        /**
          * Copies HTML of Control to Console.
          * @param {Object} event
          */
@@ -378,7 +504,87 @@ sap.ui.require(['ToolsAPI'], function (ToolsAPI) {
                 action: 'on-right-click',
                 target: rightClickHandler.getClickedElementId()
             });
+            return;
         }
+
+        // When recording is on, a left-click on a UI5 control should be recorded
+
+        if (!_isRecording || event.button !== 0) {
+            return;
+        }
+        // If the click lands on an editable element, suppress the click entry —
+        // any typing will produce a dedicated "Typed" entry on commit.
+        if (_isEditableTextElement(event.target)) {
+            return;
+        }
+        var controlId = _findClosestUI5ControlId(event.target);
+        if (!controlId) {
+            return;
+        }
+        message.send(Object.assign({
+            action: 'on-recorder-click-capture',
+            target: controlId
+        }, _getRecorderControlData(controlId)));
+    });
+
+
+    // ui5inspector.registerEventListener('click', function recorderClickCapture(event) {
+    //     // When recording is on, a left-click on a UI5 control should be recorded
+
+    //     if (!_isRecording || event.button !== 0) {
+    //         return;
+    //     }
+    //     // If the click lands on an editable element, suppress the click entry —
+    //     // any typing will produce a dedicated "Typed" entry on commit.
+    //     if (_isEditableTextElement(event.target)) {
+    //         return;
+    //     }
+    //     var controlId = _findClosestUI5ControlId(event.target);
+    //     if (!controlId) {
+    //         return;
+    //     }
+    //     message.send(Object.assign({
+    //         action: 'on-recorder-click-capture',
+    //         target: controlId
+    //     }, _getRecorderControlData(controlId)));
+    // });
+
+    ui5inspector.registerEventListener('focusin', function recorderFocusIn(event) {
+        if (!_isRecording) {
+            return;
+        }
+        // If focus moved without firing a commit (rare), flush prior state first.
+        if (_focusedEditable && _focusedEditable !== event.target) {
+            _commitFocusedEditable();
+            _clearFocusedEditable();
+        }
+        if (!_isEditableTextElement(event.target)) {
+            return;
+        }
+        var controlId = _findClosestUI5ControlId(event.target);
+        if (!controlId) {
+            return;
+        }
+        _focusedEditable = event.target;
+        _focusedEditableInitialValue = _readEditableValue(event.target);
+        _focusedEditableControlId = controlId;
+    });
+
+    ui5inspector.registerEventListener('focusout', function recorderFocusOut(event) {
+        if (event.target !== _focusedEditable) {
+            return;
+        }
+        _commitFocusedEditable();
+        _clearFocusedEditable();
+    });
+
+    ui5inspector.registerEventListener('change', function recorderChange(event) {
+        if (event.target !== _focusedEditable) {
+            return;
+        }
+        // Commit but keep tracking — the field may still have focus and further
+        // edits before blur should also be captured.
+        _commitFocusedEditable();
     });
 
     /**

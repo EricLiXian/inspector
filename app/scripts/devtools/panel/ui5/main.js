@@ -24,6 +24,7 @@
     var ControllerDetailView = require('../../../modules/ui/ControllerDetailView.js');
     var OElementsRegistryMasterView = require('../../../modules/ui/OElementsRegistryMasterView.js');
     var AIChat = require('../../../modules/ui/AIChat.js');
+    var InspectorRecorder = require('../../../modules/ui/InspectorRecorder.js');
 
     // Apply theme
     // ================================================================================
@@ -52,6 +53,23 @@
     var framesSelect;
     var displayFrameData;
     var updateSupportabilityOverlay;
+
+    /**
+     * Extract the control type from the formatted control properties, parsed from
+     * the "(Type)" suffix of the own properties' title.
+     * @param {Object} controlProperties
+     * @returns {string|null}
+     */
+    function _extractControlType(controlProperties) {
+        if (controlProperties && controlProperties.own && controlProperties.own.options && controlProperties.own.options.title) {
+            var titleMatch = controlProperties.own.options.title.match(/\(([^)]+)\)<\/span>$/);
+            if (titleMatch) {
+                return titleMatch[1];
+            }
+        }
+        return null;
+    }
+
     var sharedDataViewOptions = {
 
         /**
@@ -436,6 +454,21 @@
         }
     });
 
+    // Inspector Recorder component
+    var inspectorRecorder = new InspectorRecorder('inspector-recorder-view', {
+        /**
+         * Forward recording state to the injected script so it can capture clicks.
+         * @param {boolean} isRecording
+         */
+        onToggleRecording: function (isRecording) {
+            port.postMessage({
+                action: 'do-set-recording-state',
+                isRecording: isRecording,
+                frameId: framesSelect.getSelectedId()
+            });
+        }
+    });
+
     // ================================================================================
     // Communication
     // ================================================================================
@@ -641,6 +674,38 @@
                 oldSelectedId: framesSelect.getSelectedId()
             });
             controlTree.setSelectedElement(message.target);
+        },
+
+        /**
+         * Select ControlTree element, based on a click captured by the Inspector
+         * Recorder while recording mode is on.
+         * @param {Object} message
+         * @param {Object} messageSender
+         */
+        'on-recorder-click-capture': function (message, messageSender) {
+            inspectorRecorder.addEntry(
+                message.target,
+                _extractControlType(message.controlProperties),
+                message.controlProperties,
+                message.controlBindings,
+                { type: 'click' }
+            );
+        },
+
+        /**
+         * Select ControlTree element, based on text typed into a UI5 input that
+         * was committed (change/blur) while recording mode is on.
+         * @param {Object} message
+         * @param {Object} messageSender
+         */
+        'on-recorder-text-capture': function (message, messageSender) {
+            inspectorRecorder.addEntry(
+                message.target,
+                _extractControlType(message.controlProperties),
+                message.controlProperties,
+                message.controlBindings,
+                { type: 'type', value: message.value }
+            );
         },
 
         /**
