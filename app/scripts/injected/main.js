@@ -517,6 +517,13 @@ sap.ui.require(['ToolsAPI'], function (ToolsAPI) {
         if (_isEditableTextElement(event.target)) {
             return;
         }
+        // mousedown fires before the input's focusout, so a pending typing edit
+        // would otherwise be committed after this click. Flush it first to keep
+        // the recorded order correct (type before click).
+        if (_focusedEditable && _focusedEditable !== event.target) {
+            _commitFocusedEditable();
+            _clearFocusedEditable();
+        }
         var controlId = _findClosestUI5ControlId(event.target);
         if (!controlId) {
             return;
