@@ -70,6 +70,53 @@
         return null;
     }
 
+    /**
+     * simplify ControlTree Data
+     * @param {ControlTreeOptions} data
+     * @param {string} controlId
+     * @returns {ControlTreeOptions} the ControlTree data which only has node with given id and its sibling nodes and its parent node
+     */
+    function _simplifyControlTreeDataWithControlId(data, controlId) {
+        if (!data || !Array.isArray(data.controls)) {
+            return data;
+        }
+
+        // Prune a list of sibling nodes down to the branch that leads to the
+        // target. When the target is found at this level, keep every sibling as
+        // a leaf (target's own children are dropped). Otherwise recurse and keep
+        // only the sibling whose subtree contains the target — its parent chain.
+        function pruneControls(controls) {
+            if (!Array.isArray(controls)) {
+                return null;
+            }
+
+            var directMatch = controls.some(function (control) {
+                return control.id === controlId;
+            });
+
+            if (directMatch) {
+                return controls.map(function (control) {
+                    return Object.assign({}, control, { content: [] });
+                });
+            }
+
+            for (var i = 0; i < controls.length; i++) {
+                var prunedChildren = pruneControls(controls[i].content);
+                if (prunedChildren !== null) {
+                    return [Object.assign({}, controls[i], { content: prunedChildren })];
+                }
+            }
+
+            return null;
+        }
+
+        var prunedControls = pruneControls(data.controls);
+
+        return Object.assign({}, data, {
+            controls: prunedControls === null ? [] : prunedControls
+        });
+    }
+
     var sharedDataViewOptions = {
 
         /**
@@ -688,7 +735,8 @@
                 _extractControlType(message.controlProperties),
                 message.controlProperties,
                 message.controlBindings,
-                { type: 'click' }
+                { type: 'click' },
+                _simplifyControlTreeDataWithControlId(controlTree.getData(), message.target)
             );
         },
 
@@ -704,7 +752,8 @@
                 _extractControlType(message.controlProperties),
                 message.controlProperties,
                 message.controlBindings,
-                { type: 'type', value: message.value }
+                { type: 'type', value: message.value },
+                _simplifyControlTreeDataWithControlId(controlTree.getData(), message.target)
             );
         },
 

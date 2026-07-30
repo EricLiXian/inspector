@@ -76,15 +76,17 @@ InspectorRecorder.prototype.isRecording = function () {
  * @param {Object} controlProperties - DataView-formatted properties
  * @param {Object} controlBindings - DataView-formatted bindings
  * @param {Object} [action] - { type: 'click' } or { type: 'type', value: string }
+ * @param {Object} [controlTreeData] - simplified ControlTree data scoped to this control
  */
-InspectorRecorder.prototype.addEntry = function (controlId, controlType, controlProperties, controlBindings, action) {
+InspectorRecorder.prototype.addEntry = function (controlId, controlType, controlProperties, controlBindings, action, controlTreeData) {
     this._entries.unshift({
         controlId: controlId || 'unknown',
         controlType: controlType || 'Unknown Control',
         timestamp: Date.now(),
         controlProperties: controlProperties,
         controlBindings: controlBindings,
-        action: action || { type: 'click' }
+        action: action || { type: 'click' },
+        controlTreeData: controlTreeData
     });
     this._render();
 };
@@ -127,9 +129,9 @@ InspectorRecorder.prototype._render = function () {
 
     if (this._entries.length === 0) {
         html += '<div class="recorder-empty">';
-        var emptyMsg = this._isRecording
-            ? 'Recording… click a UI5 control or type into a UI5 input in the page to record it.'
-            : 'No controls recorded. Click "Record" and then click or type into a UI5 control in the page to record it.';
+        var emptyMsg = this._isRecording ?
+            'Recording… click a UI5 control or type into a UI5 input in the page to record it.' :
+            'No controls recorded. Click "Record" and then click or type into a UI5 control in the page to record it.';
         html += DVHelper.wrapInTag('no-data', emptyMsg);
         html += '</div>';
     } else {
@@ -177,6 +179,9 @@ InspectorRecorder.prototype._renderEntry = function (entry, index) {
 
     // Bindings section
     html += this._renderDataSection('Bindings', entry.controlBindings);
+
+    // Simplified control tree section (rendered last)
+    html += this._renderControlTreeSection('Control Tree', entry.controlTreeData, entry.controlId);
 
     html += '</div>'; // .recorder-entry-body
     html += '</div>'; // .recorder-entry
@@ -316,6 +321,92 @@ InspectorRecorder.prototype._renderSubSection = function (key, section, parentDa
     }
 
     html += DVHelper.closeLI();
+
+    return html;
+};
+
+/**
+ * Render the simplified control tree section for an entry. The tree data is
+ * scoped to the recorded control (its ancestors and siblings) via
+ * _simplifyControlTreeDataWithControlId. Rendered as the last section in the
+ * entry body.
+ * @param {string} title
+ * @param {Object} treeData - { versionInfo, controls: [{ id, name, type, content }] }
+ * @param {string} recordedControlId - id of the recorded control, highlighted in the tree
+ * @returns {string}
+ * @private
+ */
+InspectorRecorder.prototype._renderControlTreeSection = function (title, treeData, recordedControlId) {
+    var html = '';
+
+    html += '<div class="recorder-section recorder-tree-section">';
+
+    html += DVHelper.openUL({ expandable: 'true' });
+    html += DVHelper.openLI();
+
+    var hasControls = treeData && Array.isArray(treeData.controls) && treeData.controls.length > 0;
+    if (hasControls) {
+        html += DVHelper.addArrow(false);
+    }
+    html += DVHelper.wrapInTag('section-title', title);
+
+    if (!hasControls) {
+        html += DVHelper.openUL({ expanded: 'true' });
+        html += DVHelper.openLI();
+        html += DVHelper.wrapInTag('no-data', 'No Available Data');
+        html += DVHelper.closeLI();
+        html += DVHelper.closeUL();
+    } else {
+        html += this._renderControlTreeNodes(treeData.controls, recordedControlId);
+    }
+
+    html += DVHelper.closeLI();
+    html += DVHelper.closeUL();
+
+    html += '</div>'; // .recorder-tree-section
+
+    return html;
+};
+
+/**
+ * Recursively render control tree nodes as a nested collapsible list.
+ * @param {Array} controls - array of { id, name, type, content }
+ * @param {string} recordedControlId - id to highlight
+ * @returns {string}
+ * @private
+ */
+InspectorRecorder.prototype._renderControlTreeNodes = function (controls, recordedControlId) {
+    if (!Array.isArray(controls) || controls.length === 0) {
+        return '';
+    }
+
+    var html = DVHelper.openUL({ expandable: 'true' });
+
+    for (var i = 0; i < controls.length; i++) {
+        var node = controls[i];
+        var hasChildren = Array.isArray(node.content) && node.content.length > 0;
+        var isRecorded = node.id === recordedControlId;
+
+        html += DVHelper.openLI();
+
+        if (hasChildren) {
+            html += DVHelper.addArrow(false);
+        }
+
+        var nodeName = node.name || 'Control';
+        var label = '&#60;' + _escapeHtml(nodeName) +
+            ' id="' + _escapeHtml(node.id) + '"&#62;';
+        var attributes = isRecorded ? { class: 'recorder-tree-node-recorded' } : undefined;
+        html += DVHelper.wrapInTag('tree-node', label, attributes);
+
+        if (hasChildren) {
+            html += this._renderControlTreeNodes(node.content, recordedControlId);
+        }
+
+        html += DVHelper.closeLI();
+    }
+
+    html += DVHelper.closeUL();
 
     return html;
 };
